@@ -148,44 +148,37 @@ def align_on_trigger(df_name, Fs, channel_to_trigger, channels_to_align, amplitu
     elif direction == 'down':
         up = False 
     indicies_from_trigger_channel = return_indicies(df_name, Fs, channel_to_trigger, 
-                                                    amplitude_threshold, time_threshold, window_time, up)
+                                                    amplitude_threshold, time_threshold, window_time, direction)
     
     by_channel_by_sweep = {}
     region_in_samples = int(time_region*Fs)
     
     channels_to_align.append(channel_to_trigger)
     for channel in channels_to_align:
-        for sweep in sorted(list(set(df_name.index.get_level_values(0)))):
-            if sweep in list(indicies_from_trigger_channel.keys()):
-                
-                by_index = {}
-                for i in indicies_from_trigger_channel[sweep]:
+        for sweep in list(indicies_from_trigger_channel.keys()):
             
-                    
-                    if int(i-region_in_samples) < 0:
-                        trace_region = np.pad(df_name.loc[sweep][channel].values[0:int(i+region_in_samples)], 
-                                              (int(region_in_samples)*2-int(i+region_in_samples), 0), 'constant', constant_values=np.nan)
-                        print(str(len(trace_region)) + 'earlier')
-                    
-                    elif int(i+region_in_samples) > len(df_name.loc[sweep][channel].values):
-                        trace_region = np.pad(df_name.loc[sweep][channel].values[int(i-region_in_samples):], 
-                                              (0, int(i+region_in_samples)-len(df_name.loc[sweep][channel].values))
-                                              , 'constant', constant_values=np.nan)
-                        print(str(len(trace_region)) + 'later')
-                    
-                    else:
-                        trace_region = df_name.loc[sweep][channel].values[int(i-region_in_samples):int(i+region_in_samples)]
-                        print(str(len(trace_region)) + 'middle')
-                        
-                    by_index[i] = trace_region
-                    
-                index = list(range(int(-region_in_samples), int(region_in_samples)))
-        
-                by_index = pd.DataFrame(by_index)
-                                                                
-                by_channel_by_sweep[(channel, sweep)] = by_index
-            else:
-                pass
+            by_index = {}
+            for region in indicies_from_trigger_channel[sweep]:
+                before = region - (Fs *int(time_region/2))
+                after = region + (Fs*int(time_region/2))
+
+                max_length = len(df_name.loc[sweep][channel].values)
+
+                if (before > 0) and (after < max_length):
+                    trace_region = df_name.loc[sweep][channel].values[before:after]
+                elif before < 0:
+                    short_region = df_name.loc[sweep][channel].values[0:after]
+                    to_pad = (2*(Fs*time_region))-len(short_region)
+                    padded = np.append(np.full(to_pad, 0), short_region)
+                elif after > max_length:
+                    short_region = df_name.loc[sweep][channel].values[before:max_length]
+                    to_pad = (2*(Fs*time_region))-len(short_region)
+                    padded = np.append(short_region, np.full(to_pad, 0))
+
+                by_index[region] = trace_region
+
+            by_index = pd.DataFrame(by_index)
+            by_channel_by_sweep[(channel, sweep)] = by_index
 
     return(by_channel_by_sweep)
         
