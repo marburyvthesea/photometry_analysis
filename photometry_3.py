@@ -15,7 +15,9 @@ class raw_photometry_file(object):
 	def __init__(self, filename, encoder_bin, rotary_output=True):
 		#loads an abf file to a df as initialization step
 		if filename.endswith('.abf'):
-			self.class_df = abf_file_to_df(filename)
+			df_, axionio_ = abf_file_to_df(filename)
+			self.class_df = df_
+			self.axonio = axionio_
 		elif filename.endswith('.h5'):
 			self.class_df = pd.read_hdf(filename)
 		#store sampling interval info 
@@ -379,7 +381,7 @@ def abf_file_to_df(path_to_abf_file):
 	"""Inputs: file path to abf file
 	   Outputs: multidimensional data fame containing data organized by sweeps and channels
 	"""
-	
+	# r is axon io object, contains abf data and other abf file info
 	r = io.AxonIO(filename=path_to_abf_file)
 	bl = r.read_block(lazy=False)
 	num_channels = len(bl.segments[0].analogsignals)
@@ -404,7 +406,7 @@ def abf_file_to_df(path_to_abf_file):
 		
 	df = pd.concat(df_list, keys=sweep_list, names=['sweep'])
 	
-	return(df)
+	return(df, r)
 
 ## plotting functions	
 
