@@ -170,11 +170,12 @@ def align_on_trigger(df_name, Fs, channel_to_trigger, channels_to_align, amplitu
                     short_region = df_name.loc[sweep][channel].values[0:after]
                     to_pad = (2*(Fs*time_region))-len(short_region)
                     padded = np.append(np.full(to_pad, 0), short_region)
+                    trace_region = padded
                 elif after > max_length:
                     short_region = df_name.loc[sweep][channel].values[before:max_length]
                     to_pad = (2*(Fs*time_region))-len(short_region)
                     padded = np.append(short_region, np.full(to_pad, 0))
-
+                    trace_region = padded
                 by_index[region] = trace_region
 
             by_index = pd.DataFrame(by_index)
