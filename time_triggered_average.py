@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import numpy as np
 import sys
+from tqdm import tqdm
 sys.path.append('/Users/johnmarshall/Documents/Analysis/PythonAnalysisScripts/photometry_analysis/photometry_3.0_module/')
 import photometry_3 
 
@@ -152,30 +153,43 @@ def align_on_trigger(df_name, Fs, channel_to_trigger, channels_to_align, amplitu
     
     by_channel_by_sweep = {}
     region_in_samples = int(time_region*Fs)
+    print(region_in_samples)
     
+
     channels_to_align.append(channel_to_trigger)
     for channel in channels_to_align:
         for sweep in list(indicies_from_trigger_channel.keys()):
             
             by_index = {}
             for region in indicies_from_trigger_channel[sweep]:
-                before = region - (Fs *int(time_region/2))
-                after = region + (Fs*int(time_region/2))
+                before = region - int(Fs *(time_region/2))
+                after = region + int(Fs*(time_region/2))
 
                 max_length = len(df_name.loc[sweep][channel].values)
 
                 if (before > 0) and (after < max_length):
                     trace_region = df_name.loc[sweep][channel].values[before:after]
+                    #print('no pad')
+                    #print(len(trace_region))
                 elif before < 0:
                     short_region = df_name.loc[sweep][channel].values[0:after]
-                    to_pad = (2*(Fs*time_region))-len(short_region)
-                    padded = np.append(np.full(to_pad, 0), short_region)
+                    to_pad = ((Fs*time_region))-len(short_region)
+                    padded = np.append(np.full(to_pad, np.nan), short_region)
                     trace_region = padded
+                    #print('padded before')
+                    #print(len(short_region))
+                    #print(to_pad)
+                    #print(len(trace_region))
                 elif after > max_length:
                     short_region = df_name.loc[sweep][channel].values[before:max_length]
-                    to_pad = (2*(Fs*time_region))-len(short_region)
-                    padded = np.append(short_region, np.full(to_pad, 0))
+                    to_pad = ((Fs*time_region))-len(short_region)
+                    padded = np.append(short_region, np.full(to_pad, np.nan))
                     trace_region = padded
+                    trace_region = padded
+                    #print('padded after')
+                    #print(len(short_region))
+                    #print(to_pad)
+                    #print(len(trace_region))
                 by_index[region] = trace_region
 
             by_index = pd.DataFrame(by_index)
@@ -189,14 +203,14 @@ def sort_events(array, sort_type, sort_amp_threshold, sort_time_threshold, *argv
                                  'after'  : after_amp_threshold, after_time_threshold
                                  'before&after' : (before_thresold, after_threshol)}
     args depend on sort type e.g if 'before' or 'after' argv[0] is amp threshold
-                                                        argv[1] is time threshold
+                                                        argv[1] is time threshold, time threshold is tuple of samples to search in 
                                  if 'before&after' argv[0] & [1] are before threshold
                                                    argv[2] & [3] are after threshold
     """
     threshold_index = int(len(array)/2)
     output = True
     if sort_type == 'before':
-        for item in array[(threshold_index-sort_time_threshold):threshold_index]:
+        for item in array[sort_time_threshold[0]:sort_time_threshold[1]]:
             if item > sort_amp_threshold: 
                 output = False
                 break
@@ -265,7 +279,7 @@ def return_sorted_events(unsorted_regions, sort_column, sort_type, sort_amp_thre
 
     # store a list of tuples corresponding to the sweep and sample index of the event passing the sort test
     sorted_events = {}
-    for event in range(len(unsorted_regions[sort_column].columns)):
+    for event in tqdm(range(len(unsorted_regions[sort_column].columns))):
         if sort_events(unsorted_regions[sort_column].iloc[:, event].values, sort_type, sort_amp_threshold, sort_time_threshold, argv) == True:
             sorted_events[unsorted_regions[sort_column].iloc[:, event].name] = ''
 
